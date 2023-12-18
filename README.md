@@ -45,91 +45,118 @@ Understand this link in detail as its the main component utilized in migration: 
 
 
 
-# 1. Install the rancher-backup Helm chart:
-   
-Install version 1.x.x of the rancher-backup chart. The following assumes a connected environment with access to DockerHub:
-# Figure out the specific version I need to install ??       //
+## Restoration steps in New K3s Cluster: 
 
-    helm repo add rancher-charts https://charts.rancher.io
-    helm repo update
-    helm install rancher-backup-crd rancher-charts/rancher-backup-crd -n cattle-resources-system --create-namespace --version $CHART_VERSION
-    helm install rancher-backup rancher-charts/rancher-backup -n cattle-resources-system --version $CHART_VERSION
-
-Brief: https://ranchermanager.docs.rancher.com/pages-for-subheaders/backup-restore-and-disaster-recovery#installing-the-rancher-backup-operator
-
-# 2. Restore from backup using a Restore custom resource: 
-
-     Create a restore custom resource yaml and apply it.
+  # 1. Install the rancher-backup Helm chart:
      
-     # migrationResource.yaml
-        apiVersion: resources.cattle.io/v1
-        kind: Restore
-        metadata:
-          name: restore-migration
-        spec:
-          backupFilename: backup-b0450532-cee1-4aa1-a881-f5f48a007b1c-2020-09-15T07-27-09Z.tar.gz
-          prune: false
-          encryptionConfigSecretName: encryptionconfig
-          storageLocation:
-            s3:
-              credentialSecretName: s3-creds
-              credentialSecretNamespace: default
-              bucketName: backup-test
-              folder: ecm1
-              region: us-west-2
-              endpoint: s3.us-west-2.amazonaws.com
-
-      # kubectl apply -f migrationResource.yaml
-
-# 3. Install cert-manager: 
-     https://ranchermanager.docs.rancher.com/v2.5/pages-for-subheaders/install-upgrade-on-a-kubernetes-cluster#4-install-cert-manager
-     
-     
-
-# 4. Bring up Rancher with Helm
-     Use the same version of Helm to install Rancher, that was used on the first cluster.
-
-    helm install rancher rancher-latest/rancher \
-      --namespace cattle-system \
-      --set hostname=<same hostname as the server URL from the first Rancher server> \
-
-
-
-
-
-# Backing up the present Rancher using BRO: 
-https://ranchermanager.docs.rancher.com/v2.5/pages-for-subheaders/backup-restore-and-disaster-recovery#changes-in-rancher-v25
-
-1.Stop the RAncher-server container:
-  docker stop rancher-server-name
-
-2.Create a Data-container.
-docker create --volumes-from rancher_v2.6.13 --name rancher-data-data-10-25-2023 rancher/rancher:v2.6.13
-
-3.Create a backup tarball from the above data container:
-docker run --name busybox-backup-v2.6.13 --volumes-from rancher-data-data-10-25-2023 -v $PWD:/backup:z busybox tar pzcvf /backup/rancher-data-backup-v2.6.13-10-25-2023.tar.gz /var/lib/rancher
-
-4.ls & check for the backup tarball.
-
-5.Remove the data container & backup container:
-    docker rm rancher-data-data-10-25-2023
-    docker rm busybox-backup-v2.6.13
-
-6.Restart the Rancher-server container:
-    docker start rancher-server-name
+  Install version 1.x.x of the rancher-backup chart. The following assumes a connected environment with access to DockerHub:
+  # Figure out the specific version I need to install ??       //
+  
+      helm repo add rancher-charts https://charts.rancher.io
+      helm repo update
+      helm install rancher-backup-crd rancher-charts/rancher-backup-crd -n cattle-resources-system --create-namespace --version $CHART_VERSION
+      helm install rancher-backup rancher-charts/rancher-backup -n cattle-resources-system --version $CHART_VERSION
+  
+  Brief: https://ranchermanager.docs.rancher.com/pages-for-subheaders/backup-restore-and-disaster-recovery#installing-the-rancher-backup-operator
+  
+  # 2. Restore from backup using a Restore custom resource: 
+  
+       Create a restore custom resource yaml and apply it.
        
-# Lets say now you need to utilize the backup & restore it your container haaving a issue.
+       # migrationResource.yaml
+          apiVersion: resources.cattle.io/v1
+          kind: Restore
+          metadata:
+            name: restore-migration
+          spec:
+            backupFilename: backup-b0450532-cee1-4aa1-a881-f5f48a007b1c-2020-09-15T07-27-09Z.tar.gz
+            prune: false
+            encryptionConfigSecretName: encryptionconfig
+            storageLocation:
+              s3:
+                credentialSecretName: s3-creds
+                credentialSecretNamespace: default
+                bucketName: backup-test
+                folder: ecm1
+                region: us-west-2
+                endpoint: s3.us-west-2.amazonaws.com
+  
+        # kubectl apply -f migrationResource.yaml
+  
+  # 3. Install cert-manager: 
+       https://ranchermanager.docs.rancher.com/v2.5/pages-for-subheaders/install-upgrade-on-a-kubernetes-cluster#4-install-cert-manager
+       
+       
+  
+  # 4. Bring up Rancher with Helm
+       Use the same version of Helm to install Rancher, that was used on the first cluster.
+  
+      helm install rancher rancher-latest/rancher \
+        --namespace cattle-system \
+        --set hostname=<same hostname as the server URL from the first Rancher server> \
 
-1. Stop the container running Rancher:
-   docker stop <RANCHER_CONTAINER_NAME>
-   
-2. To delete your current state data and replace it with your backup data
-docker run  --volumes-from <RANCHER_CONTAINER_NAME> -v $PWD:/backup \
-busybox sh -c "rm /var/lib/rancher/* -rf  && \
-tar pzxvf /backup/rancher-data-backup-<RANCHER_VERSION>-<DATE>.tar.gz"
 
-3. Restart your Rancher Server container
-docker start <RANCHER_CONTAINER_NAME>
+## Backing up the Rancher
+
+   # 1. Backing up the present Rancher using BRO: 
+  https://ranchermanager.docs.rancher.com/v2.5/pages-for-subheaders/backup-restore-and-disaster-recovery#changes-in-rancher-v25
+  
+  # Note: This backup can not be used to migrate your SND install to a Kubernetes cluster.
+  
+  1.Stop the RAncher-server container:
+    docker stop rancher-server-name
+  
+  2.Create a Data-container.
+  docker create --volumes-from rancher_v2.6.13 --name rancher-data-data-10-25-2023 rancher/rancher:v2.6.13
+  
+  3.Create a backup tarball from the above data container:
+  docker run --name busybox-backup-v2.6.13 --volumes-from rancher-data-data-10-25-2023 -v $PWD:/backup:z busybox tar pzcvf /backup/rancher-data-backup-v2.6.13-10-25-2023.tar.gz /var/lib/rancher
+  
+  4.ls & check for the backup tarball.
+  
+  5.Remove the data container & backup container:
+      docker rm rancher-data-data-10-25-2023
+      docker rm busybox-backup-v2.6.13
+  
+  6.Restart the Rancher-server container:
+      docker start rancher-server-name
+         
+  # Lets say now you need to utilize the backup & restore it your container haaving a issue.
+  
+  1. Stop the container running Rancher:
+     docker stop <RANCHER_CONTAINER_NAME>
+     
+  2. To delete your current state data and replace it with your backup data
+  docker run  --volumes-from <RANCHER_CONTAINER_NAME> -v $PWD:/backup \
+  busybox sh -c "rm /var/lib/rancher/* -rf  && \
+  tar pzxvf /backup/rancher-data-backup-<RANCHER_VERSION>-<DATE>.tar.gz"
+  
+  3. Restart your Rancher Server container
+  docker start <RANCHER_CONTAINER_NAME>
+  
+  # Important: Copy the backup from your node to your local machine or secure it elsewhere. 
+    scp & rsync; both tools are capable of transferring files over SSH.
+    rsync -P believer@192.168.1.221:/home/believer/rancher-backup-2021-05-28.tar.gz .
+    This will copy the backup from the home directory of my server to the current directory my terminal is pointed at.
+
+
+  # 2. Creating a Persistent Volume for BRO: 
+       BRO uses object store to store and retrieve backups.
+
+       1. Create a Persistent Volume for BRO to store the backups.
+  
+          1. Go to your cluster overview and click on the local cluster. Our local is the cluster that Rancher uses under the hood and it itself is installed in.
+          2. Navigate to Storage → Persistent Volumes
+  # 3. Click on add volume, and give it the name rancher-backup.For the volume plugin select HostPath, and the default capacity of 10 GB is fine (it’ll be a couple of               MB only). For the path on the node select /rancher-backup, and you must select the option  A directory, or create if does not exist.
+
+  ![image](https://github.com/believerHSP/HA_K3s_Cluster_setup/assets/101576376/7590ef9e-900a-48c8-a6be-833ead1a4912)
+
+
+Important: Because Rancher as a single-node docker container runs a K3S single-node cluster inside the Docker container, the path on the node means something different here than you’d expect from the name. The node in this context is not your host system, but rather the container in which Rancher itself is running This means that right now, anything BRO would write to it, will be lost once the container gets removed. Because of this, we’ll have to copy the backup out of the docker container later on in order to use it for the migration.
+
+(Yes, alternatively you could bind-mount a folder on the host to the directory in this container. That way it’ll write directly to the hard disk of your node; feel free to do so.)
+
+
 
 
 
